@@ -1,0 +1,15 @@
+import pandas as pd
+
+# Load the featureCounts output
+fc_df = pd.read_csv("/content/SRRXXXXXXXX_counts.txt", sep='\t', comment='#')
+
+# Extract raw counts: gene ID + count columns (assume first 6 are annotations)
+raw_counts = fc_df.iloc[:, [0] + list(range(6, fc_df.shape[1]))]
+
+# Set gene IDs as index
+raw_counts.set_index('Geneid', inplace=True)
+
+# Save to CSV
+raw_counts.to_csv("SRA29685140_raw_counts_matrix.csv")
+
+print("Raw count matrix saved as 'SRA29685140_raw_counts_matrix.csv'")
