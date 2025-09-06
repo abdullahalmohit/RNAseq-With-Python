@@ -2,7 +2,13 @@
 # !pip install gprofiler-official
 
 import pandas as pd
+!pip install gprofiler-official
 from gprofiler import GProfiler
+
+gp = GProfiler(return_dataframe=True)
+
+gp.profile(organism='hsapiens', query=['GO:0005886', 'GO:0005887'])
+
 
 # === STEP 1: Load DESeq2 results ===
 # Assumes the file contains at least 'Gene', 'log2FoldChange', and 'padj' columns
