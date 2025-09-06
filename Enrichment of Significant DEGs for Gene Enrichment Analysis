@@ -1,0 +1,39 @@
+# === Install gprofiler-official package if not installed ===
+# !pip install gprofiler-official
+
+import pandas as pd
+from gprofiler import GProfiler
+
+# === STEP 1: Load DESeq2 results ===
+# Assumes the file contains at least 'Gene', 'log2FoldChange', and 'padj' columns
+dea_df = pd.read_csv("/content/DESeq2_significant_DEGs.csv", index_col=0)
+
+# === STEP 2: Filter for significant DEGs (log2FC threshold + adjusted p-value) ===
+log2fc_threshold = 1
+padj_threshold = 0.05
+
+# Use both criteria for filtering
+significant_degs = dea_df[
+    (abs(dea_df['log2FoldChange']) >= log2fc_threshold) &
+    (dea_df['padj'] < padj_threshold)
+]
+
+# === STEP 3: Prepare gene list for enrichment ===
+gene_list = significant_degs.index.dropna().tolist()
+
+# === STEP 4: Perform functional enrichment using g:Profiler ===
+gp = GProfiler(return_dataframe=True)
+result = gp.profile(
+    organism='athaliana',
+    query=gene_list,
+    sources=['GO:BP', 'GO:MF', 'GO:CC', 'KEGG'],
+    user_threshold=0.05  # Consider only significant terms
+)
+
+# === STEP 5: Save results ===
+significant_degs.to_csv("significant_DEGs_log2FC_padj.csv") # Remove index=False to keep gene names
+result.to_csv("enrichment_significant_DEGs.csv", index=False)
+
+# === STEP 6: Display top enrichment hits ===
+print("Top 10 enriched terms based on significant DEGs:")
+print(result[['source', 'native', 'name', 'p_value']].head(10))
