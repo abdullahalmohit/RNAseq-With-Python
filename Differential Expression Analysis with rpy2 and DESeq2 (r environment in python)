@@ -1,0 +1,74 @@
+# Install BiocManager and DESeq2
+# This might take a few minutes
+import rpy2.robjects.packages as rpackages
+utils = rpackages.importr('utils')
+# Use ask=False to automatically choose the default option for updates
+utils.chooseCRANmirror(ind=1) # select the first mirror in the list
+
+# Install BiocManager
+try:
+    rpackages.importr('BiocManager')
+except rpackages.PackageNotInstalledError:
+    utils.install_packages('BiocManager')
+
+# Install DESeq2
+biocmanager = rpackages.importr('BiocManager')
+biocmanager.install('DESeq2', ask=False)
+
+# === Import required modules ===
+import pandas as pd
+import numpy as np
+import rpy2.robjects as robjects
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.packages import importr
+from rpy2.robjects import Formula
+
+# Activate conversion between pandas and R
+pandas2ri.activate()
+
+# === Load DESeq2 package from R ===
+base = importr('base')
+deseq2 = importr('DESeq2')
+biocGenerics = importr('BiocGenerics')
+s4Vectors = importr('S4Vectors') # Required for results function
+
+# === Step 1: Load count matrix and metadata ===
+# Raw count matrix: rows = genes, columns = samples
+count_df = pd.read_excel("/content/raw count.xlsx", index_col=0)  # Use _csv if needed
+
+# Metadata: must have a 'condition' column
+sample_info = pd.DataFrame({
+    'sample': count_df.columns,
+    'condition': ['control', 'control', 'control', 'treated', 'treated', 'treated']  # Adjusted the list of conditions
+})
+sample_info.index = sample_info['sample']
+
+# === Step 2: Convert to R objects ===
+r_counts = pandas2ri.py2rpy(count_df.astype(int))        # Integer matrix
+r_coldata = pandas2ri.py2rpy(sample_info[['condition']]) # Metadata for samples
+
+# === Step 3: Construct DESeq2 dataset and run analysis ===
+dds = deseq2.DESeqDataSetFromMatrix(countData=r_counts,
+                                    colData=r_coldata,
+                                    design=Formula('~ condition'))
+
+dds = deseq2.DESeq(dds)
+
+# === Step 4: Extract results (log2FC, p-values, adjusted p-values) ===
+# Explicitly convert R results object to an R data frame before converting to pandas
+r_results = deseq2.results(dds)
+res_df = pandas2ri.rpy2py(base.as_data_frame(r_results))
+res_df.index = count_df.index  # Add gene names
+
+# === Step 5: Filter significant genes (log2FC > 1 and adj. p < 0.05) ===
+res_df = res_df.dropna()  # Remove rows with NA values
+significant = res_df[(abs(res_df['log2FoldChange']) > 1) & (res_df['padj'] < 0.05)]
+
+# === Step 6: Save results ===
+res_df.to_csv("DESeq2_all_results.csv")
+significant.to_csv("DESeq2_significant_DEGs.csv")
+
+# === Step 7: Summary ===
+print("DESeq2 analysis complete.")
+print("Top genes:\n", res_df.head())
+print(f"Significant DEGs: {significant.shape[0]}")
