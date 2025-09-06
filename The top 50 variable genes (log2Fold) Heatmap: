@@ -1,0 +1,53 @@
+# Import necessary libraries
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Load TPM expression matrix from Excel file
+# Rows are genes, columns are samples; set first column as row index
+tpm_df = pd.read_excel("Your file path", index_col=0)
+
+# Optional: Transpose if your data has samples in rows and genes in columns
+# tpm_df = tpm_df.T
+# ==== Customizable Options ====
+color_map = "RdBu"          # Color scheme for heatmap (e.g., "viridis", "plasma", "bwr", "coolwarm")
+figure_width = 14           # Width of the heatmap figure
+figure_height = 10          # Height of the heatmap figure
+top_n_genes = 50            # Number of most variable genes to plot
+
+# ==== Log2 Fold Change Calculation ====
+# Assume first column is the control sample (can be changed to any column name)
+control_sample = tpm_df.columns[0]
+
+# Compute log2 fold change of each gene in each sample relative to the control
+# Add a small number (1e-9) to avoid division by zero or log(0)
+log2fc_df = np.log2(tpm_df.divide(tpm_df[control_sample], axis=0) + 1e-9)
+
+# ==== Select Top Variable Genes ====
+# Calculate variance of log2 fold change values across samples for each gene
+# Select top N genes with highest variance (most biologically informative)
+top_genes = log2fc_df.var(axis=1).sort_values(ascending=False).head(top_n_genes).index
+
+# Subset the data to include only the top variable genes
+heatmap_data = log2fc_df.loc[top_genes]
+
+# ==== Plot Heatmap ====
+plt.figure(figsize=(figure_width, figure_height))
+
+# Create a heatmap of the log2 fold changes
+sns.heatmap(
+    heatmap_data,
+    cmap=color_map,         # Diverging colormap centered at 0
+    center=0,               # 0 represents no change (log2 fold change = 0)
+    xticklabels=True,       # Show sample names
+    yticklabels=True,       # Show gene names
+    cbar_kws={'label': 'log₂ Fold Change'}  # Colorbar label
+)
+
+# Add a title and layout adjustment
+plt.title(f"Heatmap of Top {top_n_genes} Variable Genes (log₂ Fold Change)")
+plt.tight_layout()
+
+# Display the heatmap
+plt.show()
