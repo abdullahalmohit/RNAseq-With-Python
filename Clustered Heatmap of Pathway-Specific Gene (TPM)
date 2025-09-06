@@ -1,0 +1,123 @@
+# =========================
+# 1. Import Required Libraries
+# =========================
+# These are essential Python libraries for data handling and plotting
+import pandas as pd                # For handling tabular data (like Excel)
+import numpy as np                 # For numerical operations (e.g., log2)
+import seaborn as sns              # For heatmaps and clustering
+import matplotlib.pyplot as plt    # For plotting figures
+
+# =========================
+# 2. Load TPM Expression Data
+# =========================
+# Load your TPM matrix from an Excel file.
+# Each row = gene, each column = sample (e.g., control, stress1, stress2)
+tpm_df = pd.read_excel("Your file path", index_col=0)
+
+# Preview the data structure
+print(" TPM matrix loaded with shape:", tpm_df.shape)
+print(tpm_df.head())
+
+# =========================
+# 3. Compute log2 Fold Change (log2FC)
+# =========================
+# Calculate the log2 fold change of each gene across samples.
+# We divide all samples by a control sample (first column), then take log2.
+# Add a tiny value (1e-9) to avoid division by zero or log(0) issues.
+control_sample = tpm_df.columns[0]  # Assume first column is control
+log2fc_df = np.log2(tpm_df.divide(tpm_df[control_sample], axis=0) + 1e-9)
+
+# =========================
+# 4. Define Gene Lists for Metabolic Pathways
+# =========================
+# These are example genes from Arabidopsis for 3 key pathways.
+# You can replace them with your own gene sets of interest.
+
+glycolysis_genes = ["AT1G13440", "AT1G47840", "AT2G36530", "AT3G25960", "AT5G19220"]
+photosynthesis_genes = ["AT1G29930", "AT1G44575", "AT2G34430", "AT1G67740"]
+respiration_genes = ["AT5G08670", "AT3G22370", "AT3G55410", "AT5G09500", "AT4G34930"]
+
+# =========================
+# 5. Create a Dictionary: Gene → Pathway
+# =========================
+# This will help us later to label each gene with its corresponding pathway
+pathway_genes = {gene: "Glycolysis" for gene in glycolysis_genes}
+pathway_genes.update({gene: "Photosynthesis" for gene in photosynthesis_genes})
+pathway_genes.update({gene: "Respiration" for gene in respiration_genes})
+
+# Gather the full list of genes from all pathways
+selected_genes = list(pathway_genes.keys())
+
+# =========================
+# 6. Filter & Annotate Expression Data
+# =========================
+# Keep only the genes from our pathway lists that are present in the dataset
+filtered_genes = log2fc_df.index.intersection(selected_genes)
+
+# Report missing genes (not found in the TPM data)
+missing = set(selected_genes) - set(filtered_genes)
+if missing:
+    print(" These pathway genes were not found in the dataset:", missing)
+
+# Select only the relevant genes from log2FC matrix
+heatmap_data = log2fc_df.loc[filtered_genes].copy()
+
+# Add a second-level index to indicate the pathway
+heatmap_data['Pathway'] = heatmap_data.index.map(pathway_genes)
+heatmap_data = heatmap_data.set_index('Pathway', append=True)  # Now index = (gene, pathway)
+heatmap_data = heatmap_data.sort_index(level=1)  # Sort by pathway
+
+# =========================
+# 7. Prepare for Heatmap Plotting
+# =========================
+# Drop rows with missing values if any
+heatmap_data = heatmap_data.dropna()
+
+# Remove 'Pathway' label from index before plotting (just keep genes)
+heatmap_values = heatmap_data.droplevel(1)
+
+# Create a color mapping for each pathway
+pathway_colors = {
+    "Glycolysis": "#E69F00",       # Orange
+    "Photosynthesis": "#56B4E9",   # Sky blue
+    "Respiration": "#009E73"       # Green
+}
+
+# Create a color list matching each gene's pathway
+row_colors = heatmap_data.index.get_level_values(1).map(pathway_colors)
+
+# =========================
+# 8. Generate Clustered Heatmap
+# =========================
+# Seaborn's clustermap clusters rows/columns and visualizes expression data
+# Centering at 0 helps visualize up/down regulation
+sns.set(font_scale=0.9)  # Adjust font size for clarity
+
+g = sns.clustermap(
+    heatmap_values,         # Data to plot
+    cmap="coolwarm",        # Red = upregulated, Blue = downregulated
+    center=0,               # Zero log2FC = no change
+    figsize=(12, 10),       # Size of the heatmap
+    row_cluster=True,       # Cluster genes
+    col_cluster=True,       # Cluster samples
+    row_colors=row_colors,  # Add colored side bar for pathways
+    linewidths=0.5,         # Gridline between cells
+    xticklabels=True,
+    yticklabels=True
+)
+
+# =========================
+# 9. Add Pathway Legend (Manual)
+# =========================
+# We manually create color legends using a bar plot hack on the dendrogram
+for label, color in pathway_colors.items():
+    g.ax_row_dendrogram.bar(0, 0, color=color, label=label, linewidth=0)
+
+# Place legend at appropriate position
+g.ax_row_dendrogram.legend(loc="center", title="Pathways", ncol=1)
+
+# Add an overall title to the plot
+plt.suptitle("Expression of Pathway Genes (log₂ Fold Change)", y=1.02)
+
+# Show the heatmap
+plt.show()
