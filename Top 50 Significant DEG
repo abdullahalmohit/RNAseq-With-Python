@@ -1,0 +1,31 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# === Step 1: Load significant DEGs and count matrix ===
+sig_df = pd.read_csv("/content/DESeq2_significant_DEGs.csv", index_col=0)
+# Use the existing count_df variable instead of reading a new file
+# count_df = pd.read_csv("raw_counts.csv", index_col=0)
+
+
+# === Step 2: Get top 50 genes by lowest adjusted p-value ===
+top50_genes = sig_df.sort_values('padj').head(50).index.tolist()
+
+# === Step 3: Subset and log2-transform counts for heatmap ===
+top50_counts = count_df.loc[top50_genes]
+log_counts = np.log2(top50_counts + 1)
+
+# === Optional: z-score normalization across rows (genes) ===
+log_counts_zscore = log_counts.sub(log_counts.mean(axis=1), axis=0)
+log_counts_zscore = log_counts_zscore.div(log_counts.std(axis=1), axis=0)
+
+# === Step 4: Create heatmap ===
+plt.figure(figsize=(12, 10))
+sns.heatmap(log_counts_zscore, cmap='vlag', yticklabels=True, xticklabels=True,
+            cbar_kws={"label": "Z-score (log2 expression)"})
+plt.title("Top 50 Significant DE Genes (log2-normalized)")
+plt.xlabel("Samples")
+plt.ylabel("Genes")
+plt.tight_layout()
+plt.show()
