@@ -1,0 +1,34 @@
+# Import necessary libraries
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np  # Needed for -np.log10()
+import pandas as pd
+#Load Significant DESeq2 DEG matrix
+dea_df = pd.read_csv("/content/DESeq2_significant_DEGs.csv", index_col=0)
+# Create a figure with specified size
+plt.figure(figsize=(8,6))
+
+# Generate scatter plot using seaborn
+sns.scatterplot(
+    data=dea_df,  # DataFrame containing differential expression results
+    x='log2FoldChange',  # X-axis: Log2 Fold Change
+    y=-np.log10(dea_df['padj']),  # Y-axis: -log10 of adjusted p-value
+    hue=(dea_df['padj'] < 0.05) & (abs(dea_df['log2FoldChange']) > 1),  # Color based on significance criteria
+    palette={True: 'red', False: 'gray'},  # Red = significant, Gray = not significant
+    legend=False  # Hide legend
+)
+
+# Draw threshold lines for p-value and fold-change
+plt.axhline(-np.log10(0.05), ls='--', color='black')  # Horizontal line for p = 0.05
+plt.axvline(1, ls='--', color='black')  # Vertical line for log2FC = +1
+plt.axvline(-1, ls='--', color='black')  # Vertical line for log2FC = -1
+
+# Set plot title and axis labels
+plt.title('Volcano Plot')
+plt.xlabel('Log2 Fold Change')
+plt.ylabel('-Log10 Adjusted P-value')
+
+# Adjust layout and save the figure
+plt.tight_layout()
+plt.savefig("volcano_plot.png", dpi=300)  # Save as high-resolution PNG
+plt.show()  # Display the plot
