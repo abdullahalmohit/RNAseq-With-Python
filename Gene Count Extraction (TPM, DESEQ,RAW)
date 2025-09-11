@@ -1,0 +1,20 @@
+import pandas as pd
+
+# Load the TPM averaged data
+tpm_df = pd.read_excel("/content/TPM averaged.xlsx", index_col=0)
+
+# Genes of interest
+genes_of_interest = [
+    "LOC102605282", "LOC102593019", "LOC102593899", "LOC102599485",
+    "LOC102590728", "LOC102594644", "LOC102585354", "LOC102590608",
+    "LOC102577546", "LOC102600375", "LOC102599142", "LOC102595113",
+    "LOC102586950"
+]
+
+# Extract data for the genes of interest
+extracted_data = tpm_df.loc[tpm_df.index.intersection(genes_of_interest)]
+
+# Save the extracted data to an Excel file
+extracted_data.to_excel("extracted_gene_data.xlsx")
+
+print("Extracted gene data saved to 'extracted_gene_data.xlsx'")
