@@ -1,0 +1,22 @@
+# === Import necessary libraries ===
+import numpy as np
+import pandas as pd
+
+# === Load TPM expression matrix ===
+# Rows = genes, Columns = samples; first column = gene IDs
+tpm_df = pd.read_excel("/content/TPM averaged.xlsx", index_col=0)
+
+# === Define Control Sample ===
+# Assumes first column = control; replace with actual control column name if needed
+control_sample = tpm_df.columns[0]
+
+# === Compute log2 Fold Change with pseudocount ===
+# Formula: log2((treatment + 1) / (control + 1))
+log2fc_df = np.log2((tpm_df + 1).divide(tpm_df[control_sample] + 1, axis=0))
+
+# === Save log2FC matrix ===
+log2fc_df.to_csv("log2FC_matrix.csv")
+
+# === Preview first few rows ===
+print("Log2 Fold Change matrix (first 10 rows):")
+print(log2fc_df.head(10))
