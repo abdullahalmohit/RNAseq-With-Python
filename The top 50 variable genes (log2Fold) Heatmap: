@@ -1,53 +1,43 @@
-# Import necessary libraries
+# === Import necessary libraries ===
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# Load TPM expression matrix from Excel file
-# Rows are genes, columns are samples; set first column as row index
-tpm_df = pd.read_excel("Your file path", index_col=0)
+# === Load TPM expression matrix ===
+# Rows = genes, Columns = samples; first column should be gene IDs
+tpm_df = pd.read_excel("Your_file_path.xlsx", index_col=0)
 
-# Optional: Transpose if your data has samples in rows and genes in columns
-# tpm_df = tpm_df.T
-# ==== Customizable Options ====
-color_map = "RdBu"          # Color scheme for heatmap (e.g., "viridis", "plasma", "bwr", "coolwarm")
-figure_width = 14           # Width of the heatmap figure
-figure_height = 10          # Height of the heatmap figure
+# === Customizable Options ===
+color_map = "RdBu_r"        # Diverging colormap (red = up, blue = down)
+figure_width = 14           # Width of heatmap
+figure_height = 10          # Height of heatmap
 top_n_genes = 50            # Number of most variable genes to plot
 
-# ==== Log2 Fold Change Calculation ====
-# Assume first column is the control sample (can be changed to any column name)
+# === Define Control Sample ===
+# Assumes first column = control; replace if needed (e.g., "Control")
 control_sample = tpm_df.columns[0]
 
-# Compute log2 fold change of each gene in each sample relative to the control
-# Add a small number (1e-9) to avoid division by zero or log(0)
-log2fc_df = np.log2(tpm_df.divide(tpm_df[control_sample], axis=0) + 1e-9)
+# === Compute log2 Fold Change with pseudocount ===
+# Formula: log2((treatment + 1) / (control + 1))
+log2fc_df = np.log2((tpm_df + 1).divide(tpm_df[control_sample] + 1, axis=0))
 
-# ==== Select Top Variable Genes ====
-# Calculate variance of log2 fold change values across samples for each gene
-# Select top N genes with highest variance (most biologically informative)
+# === Select Top Variable Genes ===
 top_genes = log2fc_df.var(axis=1).sort_values(ascending=False).head(top_n_genes).index
-
-# Subset the data to include only the top variable genes
 heatmap_data = log2fc_df.loc[top_genes]
 
-# ==== Plot Heatmap ====
+# === Plot Heatmap ===
 plt.figure(figsize=(figure_width, figure_height))
-
-# Create a heatmap of the log2 fold changes
 sns.heatmap(
     heatmap_data,
-    cmap=color_map,         # Diverging colormap centered at 0
-    center=0,               # 0 represents no change (log2 fold change = 0)
-    xticklabels=True,       # Show sample names
-    yticklabels=True,       # Show gene names
-    cbar_kws={'label': 'log₂ Fold Change'}  # Colorbar label
+    cmap=color_map,
+    center=0,                      # 0 = no change
+    xticklabels=True,
+    yticklabels=True,
+    cbar_kws={'label': 'log₂ Fold Change'}
 )
 
-# Add a title and layout adjustment
-plt.title(f"Heatmap of Top {top_n_genes} Variable Genes (log₂ Fold Change)")
+# Add title
+plt.title(f"Heatmap of Top {top_n_genes} Variable Genes (log₂ Fold Change)", fontsize=14)
 plt.tight_layout()
-
-# Display the heatmap
 plt.show()
