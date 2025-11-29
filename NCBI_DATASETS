@@ -1,0 +1,23 @@
+#Create an conda Environment
+conda create -n ncbi_datasets
+#Activate new Environment
+conda activate ncbi_datasets
+#Install datasets conda packages
+conda install -c conda-forge ncbi-datasets-cli
+#In case of WSL, 1. Fix DNS inside WSL, 2. Disable IPv6 inside WSL
+
+sudo rm /etc/resolv.conf
+echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+sudo chattr +i /etc/resolv.conf
+
+
+#Data download: 
+
+datasets download genome accession ACCESSION_ID \
+  --include genome,gff3,cds,... \
+  --filename ACCESSION_ID.zip
+#Example:
+
+datasets download genome accession GCF_000001735.4 \
+  --include genome,gff3 \
+  --filename GCF_000001735.4_genome_gff3.zip
